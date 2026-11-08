@@ -270,6 +270,12 @@ function formatPhone(v) {
   return v.trim();
 }
 
+// 상품 링크는 광고 추적값(utm, gclid 등)을 빼고 ...detail.html?id=800 까지만
+function cleanLink(url) {
+  const m = url.match(/^(https?:\/\/[^?#\s]*detail\.html)\?(?:[^#\s]*&)?(id=[^&#\s]+)/);
+  return m ? `${m[1]}?${m[2]}` : url;
+}
+
 // 상담 대시보드 리드 정보 → {이름}{연락처}{상품명}{모델코드}{링크위치}{프로모션}{개월수}{월렌탈}
 function parseLead(text) {
   const line = (label) => {
@@ -280,7 +286,7 @@ function parseLead(text) {
   const memo = line('메모');
   const memoParts = memo.split(/\s*[·/]\s*/);
   const promoAt = memoParts.indexOf('프로모션');
-  const link = (text.match(/https?:\/\/\S*detail\.html\S*/) || [])[0] || '';
+  const link = cleanLink((text.match(/https?:\/\/\S*detail\.html\S*/) || [])[0] || '');
   return {
     customer: line('이름'),
     customerPhone: formatPhone(line('연락처')),
@@ -343,7 +349,7 @@ function collect() {
     product: productLabel(),
     customerPhone: val('customerPhone'),
     modelCode: val('modelCode'),
-    link: val('productLink'),
+    link: cleanLink(val('productLink')),
     promotion: val('promotion'),
     reward: won(val('rewardAmount')),
     rewardWhen: val('rewardWhen'),
