@@ -194,9 +194,16 @@ function keep(sel, values, all) {
 // "방문관리 (패키지_신규)" → "방문관리". 전체 브랜드일 때는 이 큰 분류로만 고름
 const careBase = (v) => String(v).replace(/\s*\(.*\)\s*$/, '').trim();
 // 관리 선택지 = 관리구분 + 관리주기 (예: "방문관리 · 4개월관리")
+// "자가관리(4M)" 처럼 관리구분에 붙은 (nM)은 "자가관리 · 4개월관리"와 같은 뜻으로 맞춤
 const careKey = (r, brand) => {
-  const type = brand ? r[3] : careBase(r[3]);
-  const cycle = String(r[5] || '').trim();
+  let raw = String(r[3] || '').trim();
+  let cycle = String(r[5] || '').trim();
+  const m = raw.match(/\s*\(\s*(\d+)\s*(?:M|개월)\s*\)/i);
+  if (m) {
+    raw = raw.replace(m[0], '').trim();
+    if (!cycle || cycle === '-') cycle = `${m[1]}개월관리`;
+  }
+  const type = brand ? raw : careBase(raw);
   return cycle && cycle !== '-' ? `${type} · ${cycle}` : type;
 };
 
