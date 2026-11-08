@@ -7,6 +7,9 @@ const MAIN_PHONE = '1660-2564';
 const KAKAO_URL = 'https://open.kakao.com/o/sw7HPNVi';
 const SAVED_KEY = 'rentalmind-custom-messages';
 const LEAD_FIELDS = ['customer', 'customerPhone', 'productName', 'modelCode', 'productLink', 'promotion', 'contract', 'monthlyFee'];
+// 수당 지급 시기 기본 문구, 수수료표 지급수당에서 빼고 고객 수당으로 넣는 금액
+const DEFAULT_REWARD_WHEN = '설치 완료 후 익월 말일(현금 또는 상품권지급)';
+const REWARD_DEDUCT = 50000;
 const CUSTOMER_FIELDS = [...LEAD_FIELDS, 'productType', 'brand', 'model', 'cardFee', 'benefit', 'rewardAmount', 'rewardWhen', 'memo', 'leadPaste', 'commSearch'];
 
 function val(id) {
@@ -259,7 +262,7 @@ function renderComm() {
       <td class="num">${r[7] ? won(r[7]) : '-'}</td>
       <td class="num">${r[8] ? won(r[8]) : '-'}</td>
       <td class="num pay">${r[9] ? won(r[9]) : '-'}</td>
-      <td>${r[9] ? `<button type="button" class="use" data-pay="${r[9]}">수당에 넣기</button>` : ''}</td>
+      <td>${r[9] ? `<button type="button" class="use" data-pay="${r[9]}" title="지급수당에서 ${won(REWARD_DEDUCT)}을 뺀 금액을 넣어요">수당에 넣기</button>` : ''}</td>
     </tr>`).join('');
 }
 
@@ -476,7 +479,7 @@ function quoteLines(d, tone) {
   const lines = productLines(d, tone);
   if (d.cardFee) lines.push(`${b} 제휴카드 할인 시: 월 ${d.cardFee}~`);
   if (d.benefit) lines.push(`${b} 혜택: ${d.benefit}`);
-  if (d.reward) lines.push(`${b} 고객님 수당: ${d.reward}${d.rewardWhen ? ` (${d.rewardWhen} 지급)` : ''}`);
+  if (d.reward) lines.push(`${b} 고객님 수당: ${d.reward}${d.rewardWhen ? ` (${d.rewardWhen}${/지급/.test(d.rewardWhen) ? '' : ' 지급'})` : ''}`);
   return [...lines, ...linkLine(d, tone)];
 }
 
@@ -790,6 +793,7 @@ async function copy() {
 // 새 리드: 고객·상품 입력과 수수료표 필터를 비우고 리드 칸으로 이동 (상담원 정보·수수료표는 유지)
 function newLead() {
   CUSTOMER_FIELDS.forEach((f) => { $(f).value = ''; });
+  $('rewardWhen').value = DEFAULT_REWARD_WHEN;
   document.querySelectorAll('#features input').forEach((c) => { c.checked = false; });
   ['commBrand', 'commTerm', 'commCare'].forEach((id) => { $(id).value = ''; });
   autoSearch = '';
@@ -803,6 +807,7 @@ function newLead() {
 
 function reset() {
   CUSTOMER_FIELDS.forEach((f) => { $(f).value = ''; });
+  $('rewardWhen').value = DEFAULT_REWARD_WHEN;
   document.querySelectorAll('#features input').forEach((c) => { c.checked = false; });
   $('parseResult').textContent = '';
   render();
@@ -830,10 +835,12 @@ $('commFile').addEventListener('change', (e) => importCommFiles(e.target.files))
 $('commBody').addEventListener('click', (e) => {
   const btn = e.target.closest('.use');
   if (!btn) return;
-  $('rewardAmount').value = btn.dataset.pay;
+  const pay = Math.max(0, Number(btn.dataset.pay) - REWARD_DEDUCT);
+  $('rewardAmount').value = pay;
   render();
-  toast(`수당 금액에 ${won(btn.dataset.pay)}을 넣었어요.`);
+  toast(`지급수당 ${won(btn.dataset.pay)} − ${won(REWARD_DEDUCT)} = ${won(pay)}을 수당 금액에 넣었어요.`);
 });
+$('rewardWhen').value = DEFAULT_REWARD_WHEN;
 loadComm();
 renderSaved();
 // 붙여넣기·직접 입력 모두 자동 반영 (입력은 잠시 멈추면 반영)
