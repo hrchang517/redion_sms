@@ -18,6 +18,9 @@
   --disabled: #C9D3DD;
   --danger: #C0392B;
   --readonly: #F2F5F8;
+  --manual-line: #B9C6D4;
+  --manual-tag-bg: #E9EDF2;
+  --manual-tag-text: #4A5B6E;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -25,6 +28,7 @@
     --text: #E4ECF4; --muted: #8FA2B5; --accent: #3BA7EA; --accent-soft: #15344A; --on-accent: #FFFFFF;
     --warm-bg: #2A2114; --warm-line: #4A3A20; --warm-text: #F0B65C; --lms-bg: #3A2A14; --lms-text: #F2A94A;
     --send: #27A862; --disabled: #344352; --danger: #F07A6C; --readonly: #1A232E;
+    --manual-line: #3E5064; --manual-tag-bg: #243140; --manual-tag-text: #B5C4D3;
     color-scheme: dark;
   }
 }
@@ -33,6 +37,7 @@
   --text: #E4ECF4; --muted: #8FA2B5; --accent: #3BA7EA; --accent-soft: #15344A; --on-accent: #FFFFFF;
   --warm-bg: #2A2114; --warm-line: #4A3A20; --warm-text: #F0B65C; --lms-bg: #3A2A14; --lms-text: #F2A94A;
   --send: #27A862; --disabled: #344352; --danger: #F07A6C; --readonly: #1A232E;
+    --manual-line: #3E5064; --manual-tag-bg: #243140; --manual-tag-text: #B5C4D3;
   color-scheme: dark;
 }
 
@@ -158,6 +163,21 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-soft
   background: var(--accent); border: 1px solid var(--accent); color: var(--on-accent);
 }
 .paste-result { font-size: 13px; color: var(--muted); }
+
+/* 리드에 없어 상담원이 직접 채우는 영역: 점선 테두리 + 옅은 배경으로 구분 */
+.manual-box {
+  margin: 22px 0 6px;
+  padding: 12px 16px 6px;
+  border-radius: 12px;
+  background: var(--sunken);
+  border: 1.5px dashed var(--manual-line);
+}
+.manual-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.manual-tag {
+  font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+  background: var(--manual-tag-bg); color: var(--manual-tag-text);
+}
+.manual-desc { font-size: 13px; color: var(--muted); }
 
 .reward-box {
   margin: 18px 0 4px;
