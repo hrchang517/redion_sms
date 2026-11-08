@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "redion-sms",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["dev_server.py", "8769"],
+      "port": 8769
+    }
+  ]
+}
