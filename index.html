@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>렌탈마인드 상담 안내 메시지</title>
-  <link rel="stylesheet" href="styles.css?v=20261108h">
+  <link rel="stylesheet" href="styles.css?v=20261108i">
 </head>
 <body>
   <header class="top">
@@ -18,7 +18,8 @@
       <h2>리드 정보 붙여넣기</h2>
       <textarea id="leadPaste" rows="4" placeholder="상담 대시보드의 리드 정보(■ 리드 정보 ~ 메모)를 그대로 붙여넣으세요."></textarea>
       <div class="paste-actions">
-        <button type="button" id="parseBtn" class="primary">자동 입력</button>
+        <button type="button" id="parseBtn" class="primary" title="붙여넣은 리드 정보를 다시 읽어 아래 칸에 채워요">자동 입력</button>
+        <button type="button" id="newLeadBtn" class="ghost" title="지금 입력한 고객 정보를 모두 지우고 새 리드를 받아요">+ 새로 추가</button>
         <span class="paste-result" id="parseResult"></span>
       </div>
 
@@ -222,6 +223,6 @@
   </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="app.js?v=20261108h"></script>
+  <script src="app.js?v=20261108i"></script>
 </body>
 </html>

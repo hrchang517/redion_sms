@@ -787,6 +787,20 @@ async function copy() {
   toast('메시지를 복사했어요. 문자·카톡에 붙여넣기 하세요.');
 }
 
+// 새 리드: 고객·상품 입력과 수수료표 필터를 비우고 리드 칸으로 이동 (상담원 정보·수수료표는 유지)
+function newLead() {
+  CUSTOMER_FIELDS.forEach((f) => { $(f).value = ''; });
+  document.querySelectorAll('#features input').forEach((c) => { c.checked = false; });
+  ['commBrand', 'commTerm', 'commCare'].forEach((id) => { $(id).value = ''; });
+  autoSearch = '';
+  $('parseResult').textContent = '';
+  resetConfirm();
+  render();
+  $('leadPaste').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('leadPaste').focus({ preventScroll: true });
+  toast('새 리드를 붙여넣어 주세요.');
+}
+
 function reset() {
   CUSTOMER_FIELDS.forEach((f) => { $(f).value = ''; });
   document.querySelectorAll('#features input').forEach((c) => { c.checked = false; });
@@ -810,6 +824,7 @@ $('sendBtn').addEventListener('click', send);
 $('copyBtn').addEventListener('click', copy);
 $('resetBtn').addEventListener('click', reset);
 $('parseBtn').addEventListener('click', applyLead);
+$('newLeadBtn').addEventListener('click', newLead);
 $('saveCustomBtn').addEventListener('click', saveCustom);
 $('commFile').addEventListener('change', (e) => importCommFiles(e.target.files));
 $('commBody').addEventListener('click', (e) => {

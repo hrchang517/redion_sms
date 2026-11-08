@@ -162,6 +162,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-soft
   padding: 8px 16px; border-radius: 10px; cursor: pointer;
   background: var(--accent); border: 1px solid var(--accent); color: var(--on-accent);
 }
+.paste-actions .ghost {
+  font: inherit; font-size: 14px; font-weight: 600;
+  padding: 8px 14px; border-radius: 10px; cursor: pointer;
+  background: var(--card); border: 1px solid var(--accent); color: var(--accent);
+}
+.paste-actions .ghost:hover { background: var(--accent-soft); }
 .paste-result { font-size: 13px; color: var(--muted); }
 
 /* 리드에 없어 상담원이 직접 채우는 영역: 점선 테두리 + 옅은 배경으로 구분 */
