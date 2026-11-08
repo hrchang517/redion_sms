@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>렌탈마인드 상담 안내 메시지</title>
+  <link rel="stylesheet" href="styles.css?v=20261108b">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">💧 렌탈마인드</div>
+    <h1>정수기 상담 안내 메시지 작성기</h1>
+    <p class="sub">상담 신청 정보를 입력하면 고객에게 보낼 안내 문자를 바로 만들어 드려요.</p>
+  </header>
+
+  <main class="layout">
+    <section class="panel form">
+      <h2>리드 정보 붙여넣기</h2>
+      <textarea id="leadPaste" rows="4" placeholder="상담 대시보드의 리드 정보(■ 리드 정보 ~ 메모)를 그대로 붙여넣으세요."></textarea>
+      <div class="paste-actions">
+        <button type="button" id="parseBtn" class="primary">자동 입력</button>
+        <span class="paste-result" id="parseResult"></span>
+      </div>
+
+      <div class="reward-box">
+        <h2>고객 수당 금액</h2>
+        <div class="grid">
+          <label>수당 금액 (원)
+            <input id="rewardAmount" inputmode="numeric" placeholder="예: 300000">
+          </label>
+          <label>지급 시기 (선택)
+            <input id="rewardWhen" placeholder="예: 설치 완료 후 익월 말">
+          </label>
+        </div>
+        <p class="reward-preview" id="rewardPreview">금액을 입력하면 문자에 자동으로 들어가요.</p>
+      </div>
+
+      <div class="comm-box">
+        <div class="comm-head">
+          <h2>수수료표 검색</h2>
+          <label class="small-btn file-btn" id="commUpload">이번 달 수수료표 등록
+            <input type="file" id="commFile" accept=".xlsx,.xls" multiple>
+          </label>
+        </div>
+        <div class="comm-loaded" id="commLoaded"></div>
+        <div class="comm-row">
+          <input id="commSearch" placeholder="모델코드 또는 상품명 (리드 붙여넣기 시 자동 입력)">
+        </div>
+        <div class="comm-filters">
+          <select id="commBrand" aria-label="브랜드"><option value="">브랜드</option></select>
+          <select id="commTerm" aria-label="약정"><option value="">약정</option></select>
+          <select id="commCare" aria-label="관리"><option value="">관리</option></select>
+        </div>
+        <p class="label" id="commCount"></p>
+        <div class="comm-table-wrap">
+          <table class="comm-table">
+            <thead>
+              <tr><th>상품</th><th>관리</th><th>약정</th><th>프로모션</th><th class="num">월 렌탈</th><th class="num">예상수당</th><th class="num">지급수당</th><th></th></tr>
+            </thead>
+            <tbody id="commBody"></tbody>
+          </table>
+        </div>
+        <div class="comm-notes" id="commNotes"></div>
+      </div>
+
+      <h2>1. 메시지 종류</h2>
+      <div class="chips" id="typeChips">
+        <button type="button" data-type="receipt" class="chip active">접수 확인</button>
+        <button type="button" data-type="quote" class="chip">견적·혜택 안내</button>
+        <button type="button" data-type="custom" class="chip">추가 메시지</button>
+      </div>
+
+      <h2>2. 말투</h2>
+      <div class="chips" id="toneChips">
+        <button type="button" data-tone="formal" class="chip active">정중하게 (문자)</button>
+        <button type="button" data-tone="friendly" class="chip">친근하게 (카톡)</button>
+        <button type="button" data-tone="short" class="chip">짧게 (단문)</button>
+      </div>
+
+      <h2>3. 고객·신청 정보</h2>
+      <div class="grid">
+        <label>고객명
+          <input id="customer" placeholder="예: 홍길동">
+        </label>
+        <label>연락처
+          <input id="customerPhone" inputmode="tel" placeholder="예: 010-1234-5678">
+        </label>
+        <label class="wide">상품명
+          <input id="productName" placeholder="예: [SK매직] MEGA ICE 얼음정수기 mini (내추럴 화이트)">
+        </label>
+        <label>모델코드
+          <input id="modelCode" placeholder="예: WPUIAC606SNW">
+        </label>
+        <label>개월수 (약정)
+          <input id="contract" placeholder="예: 72개월">
+        </label>
+        <label>월 렌탈료 (원)
+          <input id="monthlyFee" inputmode="numeric" placeholder="예: 44900">
+        </label>
+        <label>프로모션
+          <input id="promotion" placeholder="예: 반값 첫 15개월 월 22,450원">
+        </label>
+        <label class="wide">상품 링크
+          <input id="productLink" placeholder="https://rentalmind.co.kr/shop/detail.html?id=...">
+        </label>
+      </div>
+
+      <p class="label">상품명을 입력하지 않았다면 아래 종류·브랜드로 제품명을 만들어요.</p>
+      <div class="grid">
+        <label>정수기 종류
+          <select id="productType">
+            <option value="">미정 (상담 후 결정)</option>
+            <option>냉온정수기</option>
+            <option>냉정수기</option>
+            <option>정수 전용 정수기</option>
+            <option>얼음정수기</option>
+            <option>언더싱크 정수기</option>
+          </select>
+        </label>
+        <label>브랜드
+          <select id="brand">
+            <option value="">미정</option>
+            <option>코웨이</option>
+            <option>SK매직</option>
+            <option>청호나이스</option>
+            <option>쿠쿠</option>
+            <option>LG전자</option>
+            <option>삼성전자</option>
+            <option>교원웰스</option>
+          </select>
+        </label>
+        <label>모델명 (선택)
+          <input id="model" placeholder="예: 아이콘 정수기 2">
+        </label>
+      </div>
+
+      <div class="field">
+        <span class="label">관심 기능 (선택)</span>
+        <div class="checks" id="features">
+          <label><input type="checkbox" value="직수형"> 직수형</label>
+          <label><input type="checkbox" value="얼음"> 얼음</label>
+          <label><input type="checkbox" value="온수"> 온수</label>
+          <label><input type="checkbox" value="자동 살균"> 자동 살균</label>
+          <label><input type="checkbox" value="방문 관리"> 방문 관리</label>
+          <label><input type="checkbox" value="자가(셀프) 관리"> 셀프 관리</label>
+        </div>
+      </div>
+
+      <div class="conditional custom-box" data-show="custom">
+        <h2>추가 메시지 작성</h2>
+        <label class="field">제목 (선택)
+          <input id="customTitle" placeholder="예: 설치 일정 안내">
+        </label>
+        <label class="field">내용
+          <textarea id="customBody" rows="5" placeholder="고객에게 보낼 내용을 입력하세요. 인사말·연락처·서명은 자동으로 붙어요."></textarea>
+        </label>
+        <p class="label">{이름} {상품명} {모델코드} {약정} {월렌탈} {프로모션} {수당} 을 쓰면 입력값으로 바뀌어요.</p>
+        <div class="saved-head">
+          <span class="label">자주 쓰는 메시지</span>
+          <button type="button" id="saveCustomBtn" class="small-btn">현재 내용 저장</button>
+        </div>
+        <div class="chips" id="savedChips"></div>
+      </div>
+
+      <div class="grid conditional" data-show="quote">
+        <label>제휴카드 할인 시 월 요금 (원, 선택)
+          <input id="cardFee" inputmode="numeric" placeholder="예: 14900">
+        </label>
+        <label>혜택·사은품 (선택)
+          <input id="benefit" placeholder="예: 설치비 무료, 상품권 증정">
+        </label>
+      </div>
+
+      <label class="field" data-hide="custom">추가 메모 (메시지 끝에 덧붙임, 선택)
+        <textarea id="memo" rows="2" placeholder="예: 설치 위치 사진을 보내주시면 더 정확히 안내드릴게요."></textarea>
+      </label>
+
+      <details class="settings" id="settingsBox">
+        <summary>4. 상담원·회사 정보 <small>(이 브라우저에 저장됨)</small></summary>
+        <div class="grid">
+          <label>상담원 이름
+            <input id="agent" placeholder="예: 김민지">
+          </label>
+          <label>대표 번호 (고정)
+            <input id="phone" readonly>
+          </label>
+          <label>상담 가능 시간
+            <input id="hours" placeholder="예: 평일 09:00~18:00">
+          </label>
+          <label>카카오톡 채널 (고정)
+            <input id="kakao" readonly>
+          </label>
+        </div>
+      </details>
+    </section>
+
+    <section class="panel preview">
+      <div class="preview-head">
+        <h2>미리보기</h2>
+        <span class="bytes" id="bytes">0 byte</span>
+      </div>
+      <textarea id="output" spellcheck="false"></textarea>
+      <p class="hint">미리보기에서 직접 수정한 뒤 복사할 수도 있어요. 입력값을 바꾸면 다시 생성됩니다.</p>
+      <label class="confirm">
+        <input type="checkbox" id="confirmCheck">
+        메시지 내용과 받는 사람을 확인했습니다
+      </label>
+      <p class="recipient" id="recipient"></p>
+      <div class="actions">
+        <button type="button" id="sendBtn" class="send" disabled>문자 보내기</button>
+        <button type="button" id="copyBtn" class="primary">메시지 복사</button>
+        <button type="button" id="resetBtn">고객 정보 초기화</button>
+      </div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="app.js?v=20261108b"></script>
+</body>
+</html>
