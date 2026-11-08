@@ -278,7 +278,8 @@ function parseLead(text) {
     customer: line('이름'),
     customerPhone: formatPhone(line('연락처')),
     productName: line('상품명'),
-    modelCode: line('모델코드'),
+    // 모델코드 줄이 없으면 상품명·링크 속 영문+숫자 코드(예: WPUIAC606SNW)로 대신
+    modelCode: line('모델\\s*코드') || line('상품\\s*코드') || guessCode(line('상품명')),
     productLink: link,
     // "프로모션 · 반값 첫 15개월 월 22,450원" 처럼 '프로모션' 다음 항목
     promotion: promoAt >= 0 && memoParts[promoAt + 1] ? memoParts[promoAt + 1] : '',
@@ -287,11 +288,29 @@ function parseLead(text) {
   };
 }
 
+function guessCode(text) {
+  const m = (text || '').toUpperCase().match(/\b(?=[A-Z0-9-]*\d)(?=[A-Z0-9-]*[A-Z])[A-Z0-9-]{6,}\b/);
+  return m ? m[0] : '';
+}
+
+// 모델코드 → 수수료표 검색어, 상품명의 [브랜드] → 브랜드 필터
+let autoSearch = '';
+function syncCommSearch(code, productName) {
+  const cur = $('commSearch').value.trim();
+  if (cur && cur !== autoSearch) return; // 상담원이 직접 입력한 검색어는 유지
+  autoSearch = code || productName || '';
+  $('commSearch').value = autoSearch;
+  const brand = BRANDS.find((b) => b.match.test(productName || ''));
+  if (brand && [...$('commBrand').options].some((o) => o.value === brand.name)) $('commBrand').value = brand.name;
+  renderComm();
+}
+
 function applyLead() {
   const lead = parseLead($('leadPaste').value);
   const filled = LEAD_FIELDS.filter((f) => lead[f]);
   LEAD_FIELDS.forEach((f) => { $(f).value = lead[f] || ''; });
-  $('commSearch').value = lead.modelCode || lead.productName || '';
+  autoSearch = $('commSearch').value.trim(); // 새 리드는 항상 덮어씀
+  syncCommSearch(lead.modelCode, lead.productName);
   const years = parseInt(lead.contract, 10) / 12;
   $('commTerm').value = Number.isInteger(years) && [...$('commTerm').options].some((o) => o.value === `${years}년약정`) ? `${years}년약정` : '';
   renderComm();
@@ -773,6 +792,13 @@ $('commBody').addEventListener('click', (e) => {
 });
 loadComm();
 renderSaved();
-$('leadPaste').addEventListener('paste', () => setTimeout(applyLead, 0));
+// 붙여넣기·직접 입력 모두 자동 반영 (입력은 잠시 멈추면 반영)
+let leadTimer;
+$('leadPaste').addEventListener('paste', () => { clearTimeout(leadTimer); setTimeout(applyLead, 0); });
+$('leadPaste').addEventListener('input', () => {
+  clearTimeout(leadTimer);
+  leadTimer = setTimeout(() => { if (/모델\s*코드|상품명|이름\s*:/.test($('leadPaste').value)) applyLead(); }, 600);
+});
+$('modelCode').addEventListener('input', () => syncCommSearch(val('modelCode'), val('productName')));
 
 render();
