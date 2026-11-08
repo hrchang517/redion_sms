@@ -297,6 +297,8 @@ function parseLead(text) {
     // "프로모션 · 반값 첫 15개월 월 22,450원" 처럼 '프로모션' 다음 항목
     promotion: promoAt >= 0 && memoParts[promoAt + 1] ? memoParts[promoAt + 1] : '',
     contract: (memoParts.find((p) => /^\d+\s*개월$/.test(p)) || '').replace(/\s/g, ''),
+    // 메모 첫 항목 "[리뉴얼 상세] 자가관리(4M)" → 관리 필터용
+    care: (memoParts[0] || '').replace(/^\[[^\]]*\]\s*/, '').trim(),
     monthlyFee: ((memo.match(/월렌탈\s*([\d,]+)/) || [])[1] || '').replace(/,/g, ''),
   };
 }
@@ -318,6 +320,19 @@ function syncCommSearch(code, productName) {
   renderComm();
 }
 
+// 리드의 관리(예: 자가관리(4M))와 같은 관리 필터를 고름
+function selectCare(care) {
+  const sel = $('commCare');
+  sel.value = '';
+  if (care && /관리|케어|서비스/.test(care)) {
+    const key = careKey(['', '', '', care, '', ''], $('commBrand').value);
+    const opts = [...sel.options].map((o) => o.value).filter(Boolean);
+    // 주기(4M 등)가 있을 때만 고름. "방문관리"처럼 주기가 없으면 전체를 보여줌
+    if (key.includes(' · ') && opts.includes(key)) sel.value = key;
+  }
+  renderComm();
+}
+
 function applyLead() {
   const lead = parseLead($('leadPaste').value);
   const filled = LEAD_FIELDS.filter((f) => lead[f]);
@@ -327,6 +342,7 @@ function applyLead() {
   const years = parseInt(lead.contract, 10) / 12;
   $('commTerm').value = Number.isInteger(years) && [...$('commTerm').options].some((o) => o.value === `${years}년약정`) ? `${years}년약정` : '';
   renderComm();
+  selectCare(lead.care);
   const missing = LEAD_FIELDS.filter((f) => !lead[f]).map((f) => $(f).closest('label').firstChild.textContent.trim());
   $('parseResult').textContent = filled.length
     ? `${filled.length}개 항목 입력됨${missing.length ? ` · 비어 있음: ${missing.join(', ')}` : ''}`
