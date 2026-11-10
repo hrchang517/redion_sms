@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 
-const state = { type: 'receipt', tone: 'formal' };
+const state = { type: 'sales', tone: 'formal' };
 const SETTINGS_KEY = 'rentalmind-consult-settings';
 const SETTING_FIELDS = ['agent', 'hours'];
 const MAIN_PHONE = '1660-2564';
@@ -483,7 +483,81 @@ function quoteLines(d, tone) {
   return [...lines, ...linkLine(d, tone)];
 }
 
+// ── 영업강화형: 프로모션 할인 + 설치 후 추가 혜택을 강조하는 안내 ──
+// "반값 첫 6개월 월 18,450원" → { months: 6, price: '18,450원', rate: '50%' }
+function parsePromo(promo) {
+  const m = (promo || '').match(/첫\s*(\d+)\s*개월\s*월\s*([\d,]+)\s*원/);
+  if (!m) return null;
+  const pct = (promo.match(/(\d+)\s*%/) || [])[1];
+  return { months: m[1], price: `${m[2]}원`, rate: /반값/.test(promo) ? '50%' : pct ? `${pct}%` : '' };
+}
+
+// 350000 → "35만 원", 그 외는 "352,000원"
+function manwon(v) {
+  const n = Number(String(v).replace(/[^0-9]/g, ''));
+  return n && n % 10000 === 0 ? `${(n / 10000).toLocaleString('ko-KR')}만 원` : won(n);
+}
+
+function salesLines(d) {
+  const brand = (val('productName').match(/^\[([^\]]+)\]/) || [])[1] || val('brand');
+  const title = d.product.replace(/^\[[^\]]+\]\s*/, '');
+  const promo = parsePromo(d.promotion);
+  const when = d.rewardWhen.replace(/\s*\(.*\)\s*$/, '').trim();
+  const how = ((d.rewardWhen.match(/\(([^)]*)\)/) || [])[1] || '').replace(/([^\s])지급$/, '$1 지급');
+  const perks = [];
+  if (promo) {
+    perks.push([
+      `첫 ${promo.months}개월 렌탈료 ${promo.rate ? `${promo.rate} 할인` : '할인'}`,
+      ...(d.fee ? [`* 정상 월 ${d.fee}`] : []),
+      `* 첫 ${promo.months}개월 월 ${promo.price}`,
+    ]);
+  } else if (d.promotion) {
+    perks.push([`프로모션: ${d.promotion}`, ...(d.fee ? [`* 정상 월 ${d.fee}`] : [])]);
+  }
+  if (d.reward) {
+    perks.push([
+      `설치 완료 후 추가 혜택 ${won(val('rewardAmount'))}`,
+      ...(how ? [`* ${how}`] : []),
+      ...(when ? [`* 지급 시기: ${when}`] : []),
+    ]);
+  }
+  const nums = ['①', '②', '③'];
+  const perkLines = perks.flatMap((p, i) => [`${nums[i]} ${p[0]}`, '', ...p.slice(1), '']);
+  const cheer = promo && d.reward ? `🎉 렌탈료 할인에 ${manwon(val('rewardAmount'))} 추가 혜택까지!`
+    : d.reward ? `🎉 설치 후 ${manwon(val('rewardAmount'))} 추가 혜택까지!`
+    : promo ? `🎉 초기 렌탈료 부담을 확 줄여 보세요!` : null;
+  return [
+    `🎁 [렌탈마인드] 지금 만나보실 수 있는 특별한 렌탈 혜택!`,
+    `안녕하세요, ${d.name}.`,
+    `문의해 주신 ${brand ? `${brand} ` : ''}정수기, 특별한 조건으로 안내해 드립니다.`,
+    `이번 기회에 초기 렌탈료 부담은 줄이고, 추가 혜택까지 알차게 챙겨보세요.`,
+    ``,
+    `✨ ${title}`,
+    d.modelCode ? `모델명: ${d.modelCode}` : null,
+    d.contract ? `약정기간: ${d.contract}` : null,
+    ``,
+    ...(perks.length ? [`💎 고객님을 위한 특별 혜택 ${perks.length}가지`, ...perkLines] : []),
+    cheer,
+    `제품만 선택하는 것이 아니라, 렌탈 조건과 추가 혜택까지 꼼꼼하게 비교해 보세요.`,
+    ``,
+    ...(d.link ? [`▶ 상품 상세 보기`, d.link] : []),
+    `궁금하신 사항이나 렌탈 진행을 원하시면 언제든 편하게 연락 주세요.`,
+    `고객님께서 만족스러운 선택을 하실 수 있도록 정성을 다해 안내하겠습니다.`,
+    ...contactLines(d, 'friendly'),
+    ``,
+    d.agent ? `렌탈마인드 상담원 ${d.agent}` : `렌탈마인드`,
+    `합리적인 선택에 가치를 더하다.`,
+  ];
+}
+
 const templates = {
+  sales: {
+    formal: (d) => salesLines(d),
+    friendly: (d) => salesLines(d),
+    short: (d) => [
+      `[렌탈마인드] ${d.name}, ${d.product.replace(/^\[[^\]]+\]\s*/, '')}${d.promotion ? ` ${d.promotion}` : ''}${d.reward ? ` + 설치 후 추가 혜택 ${d.reward}` : ''}. 문의 ${d.phone}${d.link ? ` ${d.link}` : ''}`,
+    ],
+  },
   receipt: {
     formal: (d) => [
       `[렌탈마인드] 정수기 렌탈 상담 신청 접수 안내`,
@@ -602,9 +676,10 @@ function build() {
       lines[0] += ` ${d.memo}`;
     } else {
       // 연락처(없으면 서명) 바로 앞에 메모 삽입
-      const tail = [...contactLines(d, state.tone), signature(d, state.tone)];
+      const tone = state.type === 'sales' ? 'friendly' : state.tone;
+      const tail = [...contactLines(d, tone), signature(d, tone)];
       const at = lines.findIndex((l) => tail.includes(l));
-      lines.splice(at, 0, d.memo, '');
+      lines.splice(at < 0 ? lines.length : at, 0, d.memo, '');
     }
   }
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
