@@ -124,6 +124,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-soft
 .bytes.lms { background: var(--lms-bg); color: var(--lms-text); }
 
 #output {
+  /* 화면 높이에 맞춰 최대한 길게 (아래 확인·버튼 영역만큼 빼고), 최소 560px */
+  height: max(560px, calc(100vh - 380px));
   min-height: 340px;
   resize: vertical;
   line-height: 1.6;
@@ -149,6 +151,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-soft
 @media (max-width: 820px) {
   .layout { grid-template-columns: 1fr; }
   .preview { position: static; }
+  #output { height: 640px; }
 }
 @media (max-width: 480px) {
   .grid { grid-template-columns: 1fr; }
