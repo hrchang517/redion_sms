@@ -51,10 +51,20 @@ body {
   letter-spacing: -0.01em;
 }
 
-.top { max-width: 1120px; margin: 0 auto; padding: 32px 16px 8px; }
+/* 상단: 한 줄로 얇게, 스크롤해도 위에 고정 */
+.top {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: baseline; gap: 10px;
+  height: 44px; align-content: center;
+  padding: 0 max(16px, calc((100% - 1120px) / 2 + 16px));
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap; overflow: hidden;
+}
+.top > * { align-self: center; }
 .brand { color: var(--accent); font-weight: 700; font-size: 14px; }
-.top h1 { margin: 6px 0 4px; font-size: 26px; letter-spacing: -0.03em; }
-.sub { margin: 0; color: var(--muted); font-size: 14px; }
+.top h1 { margin: 0; font-size: 16px; letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis; }
+.sub { display: none; }
 
 .layout {
   max-width: 1120px;
@@ -117,7 +127,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-soft
 .settings summary { cursor: pointer; font-weight: 700; font-size: 15px; margin-bottom: 12px; }
 .settings small { font-weight: 400; color: var(--muted); }
 
-.preview { position: sticky; top: 16px; }
+.preview { position: sticky; top: 56px; }
 .preview-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .preview-head h2 { margin: 0; }
 .bytes { font-size: 12px; padding: 4px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
@@ -125,7 +135,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-soft
 
 #output {
   /* 화면 높이에 맞춰 최대한 길게 (아래 확인·버튼 영역만큼 빼고), 최소 560px */
-  height: max(560px, calc(100vh - 380px));
+  height: max(560px, calc(100vh - 420px));
   min-height: 340px;
   resize: vertical;
   line-height: 1.6;
