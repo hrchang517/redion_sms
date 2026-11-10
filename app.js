@@ -550,13 +550,23 @@ function salesLines(d) {
   ];
 }
 
+// 단문: 항목마다 줄을 바꿔 보기 좋게. 마지막 줄에 혜택 + 문의 번호 + 링크
+function shortLines(d, head, product, perk) {
+  const items = [
+    product,
+    d.fee ? `월 ${d.fee}${d.contract ? `(${d.contract})` : ''}` : (d.contract ? `약정 ${d.contract}` : ''),
+    d.promotion,
+  ].filter(Boolean);
+  const tail = `${perk ? `${perk}. ` : ''}문의 ${d.phone}${d.link ? ` ${d.link}` : ''}`;
+  // 다음 줄이 이어지는 항목 끝에는 쉼표 (상품명 줄은 제외)
+  return [head, ...items.map((t, i) => (i > 0 ? `${t},` : t)), tail];
+}
+
 const templates = {
   sales: {
     formal: (d) => salesLines(d),
     friendly: (d) => salesLines(d),
-    short: (d) => [
-      `[렌탈마인드] ${d.name}, ${d.product.replace(/^\[[^\]]+\]\s*/, '')}${d.promotion ? ` ${d.promotion}` : ''}${d.reward ? ` + 설치 후 추가 혜택 ${d.reward}` : ''}. 문의 ${d.phone}${d.link ? ` ${d.link}` : ''}`,
-    ],
+    short: (d) => shortLines(d, `[렌탈마인드] ${d.name},`, d.product.replace(/^\[[^\]]+\]\s*/, ''), d.reward ? `설치 후 추가 혜택 ${d.reward}` : ''),
   },
   receipt: {
     formal: (d) => [
@@ -621,9 +631,7 @@ const templates = {
       ``,
       signature(d, 'friendly'),
     ],
-    short: (d) => [
-      `[렌탈마인드] ${d.name}, ${d.product}${d.fee ? ` 월 ${d.fee}` : ''}${d.contract ? `(${d.contract})` : ''}${d.promotion ? `, ${d.promotion}` : ''}${d.benefit ? `, ${d.benefit}` : ''}${d.reward ? `, 수당 ${d.reward}` : ''}. 문의 ${d.phone || '회신 부탁드립니다'}${d.link ? ` ${d.link}` : ''}`,
-    ],
+    short: (d) => shortLines(d, `[렌탈마인드] ${d.name},`, d.product, [d.benefit, d.reward ? `수당 ${d.reward}` : ''].filter(Boolean).join(', ')),
   },
   custom: {
     formal: (d) => [
@@ -673,7 +681,8 @@ function build() {
   const lines = templates[state.type][state.tone](d).filter((l) => l !== null);
   if (d.memo && state.type !== 'custom') {
     if (state.tone === 'short') {
-      lines[0] += ` ${d.memo}`;
+      if (lines.length > 1) lines.splice(lines.length - 1, 0, d.memo);
+      else lines[0] += ` ${d.memo}`;
     } else {
       // 연락처(없으면 서명) 바로 앞에 메모 삽입
       const tone = state.type === 'sales' ? 'friendly' : state.tone;
