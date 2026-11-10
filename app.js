@@ -498,13 +498,61 @@ function manwon(v) {
   return n && n % 10000 === 0 ? `${(n / 10000).toLocaleString('ko-KR')}만 원` : won(n);
 }
 
-function salesLines(d) {
+// 영업강화형 공통 재료: 상품 제목·브랜드·혜택 목록
+function salesInfo(d) {
   const brand = (val('productName').match(/^\[([^\]]+)\]/) || [])[1] || val('brand');
   const title = d.product.replace(/^\[[^\]]+\]\s*/, '');
   const promo = parsePromo(d.promotion);
   const when = d.rewardWhen.replace(/\s*\(.*\)\s*$/, '').trim();
   const how = ((d.rewardWhen.match(/\(([^)]*)\)/) || [])[1] || '').replace(/([^\s])지급$/, '$1 지급');
+  const reward = d.reward ? won(val('rewardAmount')) : '';
+  const rewardMan = d.reward ? manwon(val('rewardAmount')) : '';
+  return { brand, title, promo, when, how, reward, rewardMan };
+}
+
+function salesLines(d, tone) {
+  const { brand, title, promo, when, how, reward, rewardMan } = salesInfo(d);
+  const nums = ['①', '②', '③'];
   const perks = [];
+
+  if (tone === 'friendly') {
+    if (promo) {
+      perks.push([`첫 ${promo.months}개월 렌탈료 ${promo.rate ? `${promo.rate} 할인` : '할인'}!`,
+        d.fee ? `   👉 정상 월 ${d.fee} → 첫 ${promo.months}개월 월 ${promo.price}` : `   👉 첫 ${promo.months}개월 월 ${promo.price}`]);
+    } else if (d.promotion) {
+      perks.push([`${d.promotion}!`, ...(d.fee ? [`   👉 정상 월 ${d.fee}`] : [])]);
+    }
+    if (reward) {
+      perks.push([`설치 끝나면 추가 혜택 ${reward} 🎉`,
+        ...(how ? [`   👉 ${how.replace(/\s*지급$/, '')}으로 드려요`] : []),
+        ...(when ? [`   👉 지급 시기: ${when}`] : [])]);
+    }
+    const cheer = promo && reward ? `🙌 렌탈료 할인에 ${rewardMan} 혜택까지, 놓치지 마세요!`
+      : reward ? `🙌 설치 후 ${rewardMan} 혜택, 놓치지 마세요!`
+      : promo ? `🙌 초기 렌탈료 부담, 확 줄여 보세요!` : null;
+    return [
+      `🎁 ${d.name}, 렌탈마인드예요! 특별한 혜택 들고 왔어요 💧`,
+      `문의 주신 ${brand ? `${brand} ` : ''}정수기, 지금 조건이 정말 좋아요 😊`,
+      `초기 렌탈료는 확 줄이고, 추가 혜택까지 챙겨 가세요!`,
+      ``,
+      `✨ ${title}`,
+      d.modelCode ? `✔️ 모델명: ${d.modelCode}` : null,
+      d.contract ? `✔️ 약정기간: ${d.contract}` : null,
+      ``,
+      ...(perks.length ? [`💝 ${d.name}만을 위한 혜택 ${perks.length}가지`, ...perks.flatMap((p, i) => [`${nums[i]} ${p[0]}`, ...p.slice(1)]), ``] : []),
+      cheer,
+      `조건이랑 혜택까지 꼼꼼히 비교해 보시면 차이가 확실히 느껴지실 거예요.`,
+      ``,
+      ...(d.link ? [`🔗 상품 자세히 보기`, d.link] : []),
+      `궁금한 점이나 진행 원하시면 언제든 편하게 말씀 주세요 🙂`,
+      `만족스러운 선택 하실 수 있게 끝까지 꼼꼼히 도와드릴게요!`,
+      ...contactLines(d, 'friendly'),
+      ``,
+      signature(d, 'friendly'),
+    ];
+  }
+
+  // 정중하게: 상담원이 준 기본 문구
   if (promo) {
     perks.push([
       `첫 ${promo.months}개월 렌탈료 ${promo.rate ? `${promo.rate} 할인` : '할인'}`,
@@ -514,17 +562,16 @@ function salesLines(d) {
   } else if (d.promotion) {
     perks.push([`프로모션: ${d.promotion}`, ...(d.fee ? [`* 정상 월 ${d.fee}`] : [])]);
   }
-  if (d.reward) {
+  if (reward) {
     perks.push([
-      `설치 완료 후 추가 혜택 ${won(val('rewardAmount'))}`,
+      `설치 완료 후 추가 혜택 ${reward}`,
       ...(how ? [`* ${how}`] : []),
       ...(when ? [`* 지급 시기: ${when}`] : []),
     ]);
   }
-  const nums = ['①', '②', '③'];
   const perkLines = perks.flatMap((p, i) => [`${nums[i]} ${p[0]}`, '', ...p.slice(1), '']);
-  const cheer = promo && d.reward ? `🎉 렌탈료 할인에 ${manwon(val('rewardAmount'))} 추가 혜택까지!`
-    : d.reward ? `🎉 설치 후 ${manwon(val('rewardAmount'))} 추가 혜택까지!`
+  const cheer = promo && reward ? `🎉 렌탈료 할인에 ${rewardMan} 추가 혜택까지!`
+    : reward ? `🎉 설치 후 ${rewardMan} 추가 혜택까지!`
     : promo ? `🎉 초기 렌탈료 부담을 확 줄여 보세요!` : null;
   return [
     `🎁 [렌탈마인드] 지금 만나보실 수 있는 특별한 렌탈 혜택!`,
@@ -564,8 +611,8 @@ function shortLines(d, head, product, perk) {
 
 const templates = {
   sales: {
-    formal: (d) => salesLines(d),
-    friendly: (d) => salesLines(d),
+    formal: (d) => salesLines(d, 'formal'),
+    friendly: (d) => salesLines(d, 'friendly'),
     short: (d) => shortLines(d, `[렌탈마인드] ${d.name},`, d.product.replace(/^\[[^\]]+\]\s*/, ''), d.reward ? `설치 후 추가 혜택 ${d.reward}` : ''),
   },
   receipt: {
