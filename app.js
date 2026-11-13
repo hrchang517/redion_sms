@@ -72,14 +72,62 @@ async function loadComm() {
       const parts = chunks.docs.map((c) => c.data()).filter((c) => c.uploadedAt === meta.uploadedAt);
       if (parts.length !== meta.chunks) continue; // 다른 사람이 올리는 중이면 다음 알림 때 다시 읽음
       parts.sort((a, b) => a.index - b.index);
-      commTables[brand.name] = { date: meta.date, month: meta.month, uploadedAt: meta.uploadedAt, notes: meta.notes || [], rows: parts.flatMap((c) => c.rows) };
+      commTables[brand.name] = { date: meta.date, month: meta.month, uploadedAt: meta.uploadedAt, notes: meta.notes || [], modelNotes: meta.modelNotes || {}, rows: parts.flatMap((c) => c.rows) };
     }
     refreshCommFilters();
   }, () => { clearTimeout(timer); commStatus = '수수료표를 불러오지 못했어요. 새로고침해 주세요.'; refreshCommFilters(); });
 }
 
 // 제목 행 "SK매직 수수료표 (2026-11-08 기준 · 상품 68개)" 와 그 아래 머리글 행을 기준으로 읽음
+// 새 형식(코웨이 제품별약정 등): 브랜드·제품분류·모델명·타이틀·관리구분·약정명·관리주기·프로모션·렌탈가격·총수당합·N년차 금액
+// 예상수당 = 총수당합(VAT포함), 지급수당 = 예상수당에서 3.3% 차감 (기존 수수료표와 같은 기준)
+function parseProductSheet(rows, fileName) {
+  const key = (h) => String(h ?? '').replace(/\s/g, '');
+  const headerAt = rows.findIndex((r) => r.map(key).includes('모델명') && r.map(key).includes('타이틀'));
+  if (headerAt < 0) return null;
+  const header = rows[headerAt].map(key);
+  const col = (name) => header.indexOf(name);
+  const need = ['브랜드', '제품분류', '모델명', '타이틀', '관리구분', '약정명', '관리주기', '프로모션', '렌탈가격'];
+  const total = header.findIndex((h) => h.startsWith('총수당합') && !h.includes('별도'));
+  if (need.some((n) => col(n) < 0) || total < 0) return { error: '모델명·타이틀·총수당합 열을 찾지 못했어요' };
+  const years = header.map((h, i) => (/^\d+년차금액$/.test(h) ? i : -1)).filter((i) => i >= 0);
+  const promoNote = header.findIndex((h) => /^\d+월프로모션$/.test(h));
+  const num = (v) => Number(String(v ?? '').replace(/[^0-9.-]/g, '')) || 0;
+  const str = (v) => String(v ?? '').trim();
+  const body = rows.slice(headerAt + 1).filter((r) => str(r[col('모델명')]));
+  const brand = brandOf(body.map((r) => str(r[col('브랜드')])).find(Boolean) || '') || brandOf(fileName);
+  if (!brand) return { error: '브랜드(LG전자·코웨이·SK매직·쿠쿠·청호나이스)를 알 수 없어요' };
+  const data = body.map((r) => {
+    const expect = num(r[total]);
+    // 월 렌탈료(정상가)는 연차별 금액 중 가장 큰 값 (프로모션 기간 1만원 등은 제외)
+    const regular = Math.max(num(r[col('렌탈가격')]), ...years.map((i) => num(r[i])));
+    return [
+      str(r[col('제품분류')]).split('≫')[0].trim(),
+      str(r[col('모델명')]),
+      `[${brand.name}] ${str(r[col('타이틀')])}`,
+      str(r[col('관리구분')]),
+      str(r[col('약정명')]),
+      str(r[col('관리주기')]),
+      str(r[col('프로모션')]),
+      regular,
+      expect,
+      Math.round(expect * 0.967),
+    ];
+  });
+  const ym = fileName.match(/(\d{4})(\d{2})(\d{2})?(?!\d)/);
+  const date = ym ? `${ym[1]}-${ym[2]}${ym[3] ? `-${ym[3]}` : ''}` : '';
+  // 'N월 프로모션' 안내는 모델마다 달라서 모델코드별로 보관 (검색된 모델만 표시)
+  const modelNotes = {};
+  if (promoNote >= 0) body.forEach((r) => {
+    const t = str(r[promoNote]).replace(/^■\s*/, '');
+    if (t) modelNotes[str(r[col('모델명')])] = t;
+  });
+  return { brand, date, month: date ? date.slice(0, 7) : thisMonth(), rows: data, notes: [], modelNotes };
+}
+
 function parseCommSheet(rows, fileName) {
+  const product = parseProductSheet(rows, fileName);
+  if (product) return product;
   const headerAt = rows.findIndex((r) => r.includes('모델코드') && r.includes('상품명'));
   if (headerAt < 0) return null;
   const header = rows[headerAt].map((h) => String(h).trim());
@@ -125,7 +173,7 @@ async function saveCommTable(brand, table) {
   for (const d of old.docs) if (Number(d.id) >= chunks.length) await col.doc(d.id).delete();
   await commDb.doc(`commission/${brand.key}`).set({
     brand: brand.name, date: table.date, month: table.month, uploadedAt: table.uploadedAt,
-    notes: table.notes, chunks: chunks.length, rowCount: table.rows.length,
+    notes: table.notes, modelNotes: table.modelNotes || {}, chunks: chunks.length, rowCount: table.rows.length,
   });
   commTables[brand.name] = table;
   return true;
@@ -147,7 +195,7 @@ async function importCommFiles(files) {
       const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
       const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: false });
       const table = parseCommSheet(rows, name);
-      if (!table || table.error) { failed.push(`${name}: ${table ? table.error : '모델코드·상품명·지급수당 열을 찾지 못했어요'}`); continue; }
+      if (!table || table.error) { failed.push(`${name}: ${table ? table.error : '수수료표 형식을 알 수 없어요 (모델코드·상품명·지급수당 또는 모델명·타이틀·총수당합 열 필요)'}`); continue; }
       const { brand, ...rest } = table;
       const ok = await saveCommTable(brand, { ...rest, uploadedAt: new Date().toISOString() });
       done.push(`${brand.name} ${table.rows.length.toLocaleString('ko-KR')}행${ok ? '' : '(저장 실패)'}`);
@@ -207,7 +255,7 @@ const careKey = (r, brand) => {
     if (!cycle || cycle === '-') cycle = `${m[1]}개월관리`;
   }
   const type = brand ? raw : careBase(raw);
-  return cycle && cycle !== '-' ? `${type} · ${cycle}` : type;
+  return cycle && !['-', '해당없음'].includes(cycle) ? `${type} · ${cycle}` : type;
 };
 
 // 관리 선택지: 브랜드를 고르면 그 브랜드의 관리구분 그대로, 아니면 큰 분류만. 많이 쓰이는 순서로
@@ -252,7 +300,13 @@ function renderComm() {
     : '검색 결과가 없어요.';
   // 검색 결과에 나온 브랜드의 엑셀 하단 ※ 안내문을 함께 표시
   const noteBrands = [...new Set(shown.map(([b]) => b))];
-  $('commNotes').innerHTML = noteBrands.flatMap((b) => (commTables[b].notes || []).map((n) => `<p>${esc(b)} ${esc(n)}</p>`)).join('');
+  const brandNotes = noteBrands.flatMap((b) => (commTables[b].notes || []).map((n) => `<p>${esc(b)} ${esc(n)}</p>`));
+  const models = [...new Map(shown.map(([b, r]) => [`${b}|${r[1]}`, [b, r[1]]])).values()];
+  const modelNotes = models
+    .map(([b, code]) => [b, code, (commTables[b].modelNotes || {})[code]])
+    .filter(([, , n]) => n).slice(0, 5)
+    .map(([b, code, n]) => `<p>${esc(b)} ${esc(code)} ※ ${esc(n)}</p>`);
+  $('commNotes').innerHTML = [...brandNotes, ...modelNotes].join('');
   body.innerHTML = shown.map(([b, r]) => `
     <tr class="${fee && r[7] === fee && norm(r[1]) === q ? 'match' : ''}">
       <td class="prod">${esc(r[2])}<span class="code">${esc(b)} · ${esc(r[1])}</span></td>
