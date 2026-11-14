@@ -80,7 +80,7 @@ async function loadComm() {
 
 // 제목 행 "SK매직 수수료표 (2026-11-08 기준 · 상품 68개)" 와 그 아래 머리글 행을 기준으로 읽음
 // 새 형식(코웨이 제품별약정 등): 브랜드·제품분류·모델명·타이틀·관리구분·약정명·관리주기·프로모션·렌탈가격·총수당합·N년차 금액
-// 예상수당 = 총수당합(VAT포함), 지급수당 = 예상수당에서 3.3% 차감 (기존 수수료표와 같은 기준)
+// 예상수당 = 총수당합·내 수당(VAT포함), 지급수당 = '3.3%차감 후' 열 (없으면 예상수당에서 3.3% 차감)
 function parseProductSheet(rows, fileName) {
   const key = (h) => String(h ?? '').replace(/\s/g, '');
   const headerAt = rows.findIndex((r) => r.map(key).includes('모델명') && r.map(key).includes('타이틀'));
@@ -88,8 +88,10 @@ function parseProductSheet(rows, fileName) {
   const header = rows[headerAt].map(key);
   const col = (name) => header.indexOf(name);
   const need = ['브랜드', '제품분류', '모델명', '타이틀', '관리구분', '약정명', '관리주기', '프로모션', '렌탈가격'];
-  const total = header.findIndex((h) => h.startsWith('총수당합') && !h.includes('별도'));
-  if (need.some((n) => col(n) < 0) || total < 0) return { error: '모델명·타이틀·총수당합 열을 찾지 못했어요' };
+  // 수당 열: '총수당합(VAT포함)' 또는 '내 수당(VAT포함)', 3.3% 차감 열이 있으면 그 값을 지급수당으로
+  const total = header.findIndex((h) => /^(총수당합|내수당)/.test(h) && !h.includes('별도') && !h.includes('차감'));
+  const paid = header.findIndex((h) => /^(총수당합|내수당)/.test(h) && h.includes('차감'));
+  if (need.some((n) => col(n) < 0) || total < 0) return { error: '모델명·타이틀·수당(총수당합 또는 내 수당) 열을 찾지 못했어요' };
   const years = header.map((h, i) => (/^\d+년차금액$/.test(h) ? i : -1)).filter((i) => i >= 0);
   const promoNote = header.findIndex((h) => /^\d+월프로모션$/.test(h));
   const num = (v) => Number(String(v ?? '').replace(/[^0-9.-]/g, '')) || 0;
@@ -111,7 +113,7 @@ function parseProductSheet(rows, fileName) {
       str(r[col('프로모션')]),
       regular,
       expect,
-      Math.round(expect * 0.967),
+      paid >= 0 ? num(r[paid]) : Math.round(expect * 0.967),
     ];
   });
   const ym = fileName.match(/(\d{4})(\d{2})(\d{2})?(?!\d)/);
